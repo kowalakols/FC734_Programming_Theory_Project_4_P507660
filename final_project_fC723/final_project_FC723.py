@@ -2,6 +2,19 @@ from random import randint
 import random
 import string
 
+import sqlite3
+conn = sqlite3.connect("bookings.db")
+cursor = conn.cursor()
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS bookings (
+        reference TEXT,
+        passport TEXT,
+        name TEXT,
+        seat TEXT
+    )
+""")
+conn.commit()
+
 existing_references = []
 
 def generate_reference():
@@ -10,6 +23,14 @@ def generate_reference():
         if refrence not in existing_references:
             existing_references.append(refrence)
             return refrence
+def save_booking(ref, passport, name, seat):
+    cursor.execute("INSERT INTO bookings VALUES (?,?,?,?)",
+                   (ref, passport, name, seat))
+    conn.commit()
+
+def delete_booking(ref):
+    cursor.execute("DELETE FROM bookings WHERE reference = ?", (ref,))
+    conn.commit()
 
 class Customer:
     test_user = {"name": "test", "email": "test@gmail.com", "password": "testing", "status": "passive"}
@@ -162,6 +183,7 @@ class Plane:
                     passport = input("Enter your passport number: ").strip()
                     refrence = generate_reference()
                     result_seat.reserve(app, refrence)
+                    save_booking(refrence, passport, app.name, result_seat.sit_number)
                     print(f"{result_seat.sit_number} booked. Your reference is: {refrence}")
                     app.bookings[refrence] = result_seat
                 elif free_seat == "no":
@@ -180,6 +202,9 @@ class Plane:
         elif result_seat.sit_user != app:
             print("That seat belongs to someone else.")
         else:
+            ref = result_seat.refrence 
+            delete_booking(ref)
+            del app.bookings[ref]
             result_seat.status = "F"
             result_seat.sit_user = None
             result_seat.refrence = None
